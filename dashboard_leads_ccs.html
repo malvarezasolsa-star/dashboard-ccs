@@ -615,15 +615,29 @@ async function initMsal() {
 }
 
 async function doLogin() {
-  if (!msalReady) {
-    document.getElementById('btn-login').textContent = 'Conectando...';
-    await new Promise(function(r, j) {
-      var t = setTimeout(function(){j();}, 8000);
-      onMsalReady(function(){clearTimeout(t); r();});
-    });
+  var btn = document.getElementById('btn-login');
+  if (btn) btn.textContent = 'Conectando...';
+  // If MSAL not initialized yet, initialize now
+  if (!msalApp) {
+    try { await initMsal(); } catch(e) {}
   }
-  if (!msalApp) { showToast('Error MSAL. Verifica conexion a internet.'); return; }
-  await msalApp.loginRedirect({ scopes: SCOPES, redirectUri: REDIRECT });
+  // Wait up to 6s for msalApp
+  var waited = 0;
+  while (!msalApp && waited < 6000) {
+    await new Promise(function(r){ setTimeout(r, 200); });
+    waited += 200;
+  }
+  if (!msalApp) {
+    showToast('Error al inicializar MSAL. Verifica conexion a internet.');
+    if (btn) btn.textContent = 'Conectar OneDrive';
+    return;
+  }
+  try {
+    await msalApp.loginRedirect({ scopes: SCOPES, redirectUri: REDIRECT });
+  } catch(e) {
+    showToast('Error de login: ' + e.message);
+    if (btn) btn.textContent = 'Conectar OneDrive';
+  }
 }
 
 async function getToken() {
@@ -1006,7 +1020,7 @@ function showToast(m) {
 
 buildMonthOpts('2026');
 apply();
-setTimeout(function(){initMsal();}, 150);
+initMsal();
 </script>
 </body>
 </html>
