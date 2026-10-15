@@ -967,19 +967,29 @@ function parseLeadsExcel(buffer) {
       Object.keys(byDow[yr]||{}).forEach(function(mo) { byDowFinal[yr][mo] = byDow[yr][mo]; });
     });
 
-    // sameMonth structure (for current month YoY)
+    // sameMonth structure: keyed by month number string, value = array of {y, total, positivo}
     var sameMonth = {};
-    var now = new Date();
-    var curMo = now.getMonth() + 1;
+    // Collect all months that appear across any year
+    var allMonths = {};
     YEARS.forEach(function(yr) {
-      if (ep1raw[yr] && ep1raw[yr][curMo]) {
-        sameMonth[yr] = ep1raw[yr][curMo];
+      if (monthly[yr]) {
+        Object.keys(monthly[yr]).forEach(function(mo) { allMonths[mo] = true; });
       }
+    });
+    Object.keys(allMonths).forEach(function(mo) {
+      sameMonth[String(mo)] = [];
+      YEARS.forEach(function(yr) {
+        var mData = monthly[yr] && monthly[yr][mo];
+        if (mData) {
+          sameMonth[String(mo)].push({ y: yr, total: mData.total || 0, positivo: mData.positivo || 0 });
+        }
+      });
+      // Sort by year
+      sameMonth[String(mo)].sort(function(a,b){ return a.y < b.y ? -1 : 1; });
     });
 
     // Overwrite DB
     DB.byYear = byYear;
-    DB.byYear['all'] = allByYear;  // optional extra
     DB.monthly = monthlyFinal;
     DB.ep2 = ep2Final;
     DB.ep1 = ep1Final;
